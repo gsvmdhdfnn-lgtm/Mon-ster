@@ -81,3 +81,9 @@ Nibbit now has larger glossy eyes with highlights, a tiny dark nose and smile, t
 Compared default and close camera screenshots with the references, then shortened overly spiky fur and adjusted grass clustering. Desktop pathfinding, blocked clicks, approaching and re-clicking Nibbit, full camera rotation, zoom/pitch limits, reset, resize, roaming simulation, and mid-hop clicks pass without runtime errors. Character-animation checks cover foot contact/lift, arm swing, rest pose, blinking, sniffing, and digging.
 
 Remaining differences: this is a small real-time 3D clearing, with simpler shading and less fine surface detail than the painted/pixel-textured concept artwork. It retains level terrain and the original three trees and three rocks. The reference village, cliffs, water, and distant landscape have deliberately not been added.
+
+## Explorer proportions and equipment
+
+Rebuilt the explorer with a smaller jaw-shaped head, subtle eyes/brows/nose/mouth, short tapered hair spikes, a shaped tunic and waist, longer trousered legs with overlapping knee joints, and defined boots with soles. The backpack is a structured canvas bag with a flap, front and side pockets, buckles, stitching, a carry handle, and shoulder straps.
+
+The explorer is taller overall with an additional 10% model scale; Nibbit is 12% larger. Footstep timing accounts for model scale so planted feet still follow distance travelled. Both continue using the original navigation cells, movement speed, and camera controls. Syntax, desktop interaction/camera, animation, and roaming/collision checks pass.

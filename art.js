@@ -132,40 +132,87 @@ export function buildArt(scene, renderer, world, trees, rocks, nibbitCell) {
   }
   gravel.receiveShadow=true;scene.add(gravel);
 
-  const player=new THREE.Group();const coat=mat('#4c6540'), leather=mat('#674936'), skin=mat('#e7b889'), scarf=mat('#92764a');
+  const player=new THREE.Group();player.scale.setScalar(1.1);
+  const coat=mat('#4c6540'),leather=mat('#58402c'),skin=new THREE.MeshStandardMaterial({color:'#d8a578',roughness:.9}),pants=new THREE.MeshStandardMaterial({color:'#424a43',roughness:1}),hair=mat('#4b3021');
+  coat.flatShading=false;
+  function box(parent,material,position,size,radius=.025){
+    const geo=new THREE.BoxGeometry(...size,5,5,5),pos=geo.attributes.position,v=new THREE.Vector3(),core=new THREE.Vector3();
+    for(let i=0;i<pos.count;i++){
+      v.fromBufferAttribute(pos,i);core.set(THREE.MathUtils.clamp(v.x,-size[0]/2+radius,size[0]/2-radius),THREE.MathUtils.clamp(v.y,-size[1]/2+radius,size[1]/2-radius),THREE.MathUtils.clamp(v.z,-size[2]/2+radius,size[2]/2-radius));
+      v.sub(core).normalize().multiplyScalar(radius).add(core);pos.setXYZ(i,v.x,v.y,v.z);
+    }
+    geo.computeVertexNormals();const mesh=new THREE.Mesh(geo,material);mesh.position.set(...position);mesh.castShadow=mesh.receiveShadow=true;parent.add(mesh);return mesh;
+  }
+  function cord(parent,points,radius,material){
+    const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));
+    const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,16,radius,6,false),material);parent.add(mesh);mesh.castShadow=true;return mesh;
+  }
   const torso=new THREE.Group();player.add(torso);
   const legs=[-1,1].map(side=>{
-    const thigh=blob(player,coat,[0,0,0],[.09,.1,.09]);
-    const shin=blob(player,leather,[0,0,0],[.085,.1,.085]);
-    const boot=blob(player,leather,[side*.14,.085,0],[.115,.085,.17]);
-    return {side,thigh,shin,boot};
+    const thigh=blob(player,pants,[0,0,0],[1,1,1],new THREE.CylinderGeometry(.097,.085,2,12));
+    const shin=blob(player,pants,[0,0,0],[1,1,1],new THREE.CylinderGeometry(.085,.065,2,12));
+    const joint=blob(player,pants,[0,0,0],[.086,.09,.086]);
+    const boot=box(player,leather,[side*.12,.085,.035],[.16,.17,.27],.035);
+    const sole=box(boot,mat('#302a25'),[0,-.065,0],[.165,.035,.275],.01);
+    return {side,thigh,shin,joint,boot};
   });
-  blob(torso,coat,[0,.69,0],[.27,.29,.21]);
+  box(torso,pants,[0,.74,0],[.39,.18,.24],.045);
+  const jacketGeo=new THREE.LatheGeometry([new THREE.Vector2(0,.79),new THREE.Vector2(.21,.79),new THREE.Vector2(.20,.94),new THREE.Vector2(.23,1.16),new THREE.Vector2(.25,1.25),new THREE.Vector2(.17,1.33),new THREE.Vector2(.085,1.36),new THREE.Vector2(0,1.36)],20);
+  blob(torso,coat,[0,0,0],[1,1,.62],jacketGeo);
+  blob(torso,skin,[0,1.39,0],[.073,.09,.07]);
+  box(torso,leather,[0,.83,0],[.43,.055,.28],.015);
+  box(torso,mat('#aa9462'),[0,.83,.149],[.058,.045,.015],.006);
+  cord(torso,[[0,.88,.135],[0,1.1,.149],[0,1.29,.13]],.008,mat('#344b32'));
+  for(const side of [-1,1])box(torso,coat,[side*.12,.98,.145],[.10,.11,.015],.006);
   const arms=[-1,1].map(side=>{
-    const arm=new THREE.Group();arm.position.set(side*.28,.85,0);torso.add(arm);
-    blob(arm,coat,[0,-.12,0],[.095,.19,.11]);
-    blob(arm,skin,[0,-.32,.015],[.085,.09,.08]);return arm;
+    const arm=new THREE.Group();arm.position.set(side*.245,1.26,0);torso.add(arm);
+    const upper=blob(arm,coat,[side*.025,-.13,0],[.079,.17,.082]);upper.rotation.z=side*.12;
+    blob(arm,coat,[side*.04,-.31,.025],[.067,.13,.069]);
+    box(arm,leather,[side*.04,-.40,.03],[.13,.045,.135],.01);
+    blob(arm,skin,[side*.04,-.46,.04],[.052,.075,.042]);
+    blob(arm,skin,[side*.005,-.445,.075],[.026,.044,.025]);return arm;
   });
-  blob(torso,skin,[0,1.14,.01],[.23,.25,.21]);
-  const hair=mat('#513322');
-  blob(torso,hair,[0,1.30,-.025],[.25,.18,.23]);
-  for(let i=0;i<18;i++){
-    const a=i*2.399,r=.16+random()*.04;
-    const lock=blob(torso,hair,[Math.cos(a)*r,1.31+random()*.12,Math.sin(a)*r],[.085,.11,.085],new THREE.IcosahedronGeometry(1,1));lock.rotation.z=Math.cos(a)*.5;
+  // Shaped jaw and smaller head; subtle facial features instead of bead eyes and a button nose.
+  const headGeo=new THREE.SphereGeometry(1,24,18),headPos=headGeo.attributes.position;
+  for(let i=0;i<headPos.count;i++){
+    const y=headPos.getY(i),taper=y<-.15?1+(y+.15)*.23:1;
+    headPos.setXYZ(i,headPos.getX(i)*taper, y,headPos.getZ(i)*(y<0?.92:1));
   }
+  headGeo.computeVertexNormals();blob(torso,skin,[0,1.62,.015],[.163,.215,.145],headGeo);
   for(const side of [-1,1]){
-    blob(torso,hair,[side*.21,1.18,-.025],[.05,.13,.14]);
-    blob(torso,skin,[side*.24,1.12,.015],[.045,.07,.055]);
-    blob(torso,leather,[side*.16,.72,.20],[.026,.23,.025]);
+    blob(torso,skin,[side*.163,1.61,.012],[.027,.049,.03]);
+    blob(torso,mat('#c08a66'),[side*.17,1.61,.032],[.01,.024,.008]);
+    blob(torso,mat('#e9dfca'),[side*.063,1.653,.149],[.039,.018,.012]);
+    blob(torso,mat('#473c2c'),[side*.061,1.654,.159],[.014,.016,.006]);
+    blob(torso,mat('#171714'),[side*.061,1.654,.164],[.007,.011,.003]);
+    const brow=box(torso,hair,[side*.063,1.691,.149],[.067,.012,.011],.003);brow.rotation.z=side*-.08;
   }
-  blob(torso,leather,[0,.51,0],[.28,.045,.22]);
-  blob(torso,mat('#b49a5c'),[.02,.51,.225],[.045,.032,.015]);
-  blob(torso,skin,[0,1.10,.225],[.045,.055,.045]);
-  blob(torso,scarf,[0,.94,0],[.24,.045,.20]);
-  const scarfTail=blob(torso,scarf,[.21,.77,-.24],[.09,.25,.045]);scarfTail.rotation.z=-.25;
-  blob(torso,leather,[0,.68,-.24],[.22,.26,.12]);
-  blob(torso,palette.cream,[0,.81,-.35],[.21,.075,.065]);
-  for(const s of [-1,1])blob(torso,palette.ink,[s*.085,1.15,.202],[.025,.035,.018]);
+  blob(torso,skin,[0,1.61,.159],[.024,.047,.025]);
+  blob(torso,skin,[0,1.582,.177],[.026,.018,.020]);
+  cord(torso,[[-.038,1.535,.143],[0,1.529,.15],[.038,1.535,.143]],.005,mat('#93654e'));
+  blob(torso,hair,[0,1.68,-.008],[.171,.169,.152],new THREE.SphereGeometry(1,20,12,0,Math.PI*2,0,1.65));
+  const spikeGeo=new THREE.ConeGeometry(1,1,4);spikeGeo.translate(0,.5,0);
+  for(let i=0;i<26;i++){
+    const a=i*2.399,r=.04+random()*.115,x=Math.cos(a)*r,z=Math.sin(a)*r;
+    const spike=blob(torso,hair,[x,1.77+(.15-r)*.28,z-.01],[.035+random()*.018,.035+random()*.03,.035],spikeGeo);
+    spike.rotation.set(z*3+.15,random()*6,x*-3);
+  }
+  for(const side of [-1,1])blob(torso,hair,[side*.146,1.68,-.018],[.025,.064,.095]);
+  // Canvas pack: a structured bag, top flap, front pocket, side pockets and real shoulder straps.
+  const canvasMaterial=mat('#857048'),seam=mat('#b09a6e'),metal=mat('#ad9b70');
+  box(torso,canvasMaterial,[0,1.075,-.235],[.37,.46,.21],.045);
+  box(torso,canvasMaterial,[0,1.055,-.36],[.28,.20,.07],.025);
+  box(torso,leather,[0,1.285,-.255],[.39,.085,.24],.025);
+  box(torso,canvasMaterial,[0,1.145,-.398],[.29,.05,.018],.008);
+  for(const side of [-1,1]){
+    box(torso,canvasMaterial,[side*.213,1.05,-.235],[.075,.18,.16],.02);
+    box(torso,leather,[side*.11,1.19,-.358],[.035,.19,.018],.006);
+    box(torso,metal,[side*.11,1.135,-.374],[.047,.04,.012],.004);
+    cord(torso,[[side*.12,1.28,-.23],[side*.20,1.34,-.04],[side*.17,1.26,.15],[side*.16,.98,.165],[side*.20,.91,-.16]],.022,leather);
+    cord(torso,[[side*.145,.98,-.401],[side*.145,1.12,-.401]],.004,seam);
+  }
+  cord(torso,[[-.065,1.32,-.245],[-.06,1.38,-.24],[.06,1.38,-.24],[.065,1.32,-.245]],.014,leather);
+  const scarfTail=new THREE.Group();torso.add(scarfTail);
   scene.add(player);
 
   const nibbit=new THREE.Group(), nibbitPose=new THREE.Group();nibbit.add(nibbitPose);
@@ -202,6 +249,7 @@ export function buildArt(scene, renderer, world, trees, rocks, nibbitCell) {
   nibbitPose.updateMatrixWorld(true);faceParts.forEach(part=>nibbitHead.attach(part));
   const eyeHeights=eyes.map(eye=>eye.scale.y);
   nibbit.position.copy(world(...nibbitCell));nibbit.rotation.y=.35;
+  nibbit.scale.setScalar(1.12);
   nibbit.traverse(o=>{if(o.isMesh)o.userData.nibbit=true});scene.add(nibbit);
   const marker=new THREE.Mesh(new THREE.RingGeometry(.20,.26,32),new THREE.MeshBasicMaterial({color:'#f4dd9c',transparent:true,opacity:.8,side:THREE.DoubleSide}));
   marker.rotation.x=-Math.PI/2;marker.position.y=.025;marker.visible=false;scene.add(marker);
@@ -217,7 +265,7 @@ export function buildArt(scene, renderer, world, trees, rocks, nibbitCell) {
     const travelled=previousPosition?player.position.distanceTo(previousPosition):0;
     if(!previousPosition)previousPosition=player.position.clone();previousPosition.copy(player.position);
     // Advance by distance, not wall time: planted feet match the navigation speed.
-    if(travelled<.3)phase+=travelled/1.12*Math.PI*2;
+    if(travelled<.3)phase+=travelled/(1.12*1.1)*Math.PI*2;
     walkBlend=THREE.MathUtils.damp(walkBlend,moving?1:0,18,dt);
     const bounce=(1-Math.cos(phase*2))*.018*walkBlend;
     torso.position.y=bounce;torso.rotation.z=Math.sin(phase)*.035*walkBlend;
@@ -227,9 +275,9 @@ export function buildArt(scene, renderer, world, trees, rocks, nibbitCell) {
       const swing=(u-.5)*2;
       const z=(u<.5?.28-u*1.12:-.28+.56*(swing*swing*(3-2*swing)))*walkBlend;
       const lift=u<.5?0:Math.sin(swing*Math.PI)*.15*walkBlend;
-      leg.boot.position.set(leg.side*.14,.085+lift,z);
-      hip.set(leg.side*.14,.48+bounce,0);ankle.set(leg.side*.14,.14+lift,z);
-      knee.copy(hip).lerp(ankle,.5);knee.z+=.07+lift*.5;
+      leg.boot.position.set(leg.side*.12,.085+lift,z+.035);
+      hip.set(leg.side*.12,.76+bounce,0);ankle.set(leg.side*.12,.17+lift,z);
+      knee.copy(hip).lerp(ankle,.5);knee.z+=.035+lift*.65;leg.joint.position.copy(knee);
       limb(leg.thigh,hip,knee);limb(leg.shin,knee,ankle);
       arms[i].rotation.x=Math.sin(phase+i*Math.PI)*.55*walkBlend;
     });
