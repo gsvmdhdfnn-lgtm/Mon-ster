@@ -56,4 +56,12 @@ Visual Proof 001 was checked in desktop Edge/Chromium with WebGL:
 - More than 360° of camera drag, pitch and zoom limits, reset, and viewport resize.
 - Visual inspection at 1440×1000, including the default view and Nibbit approach.
 
-The default view measured approximately 15,338 rendered triangles and 90 draw calls (renderer counters, not a frame-rate guarantee). Grass and flowers use two instanced draw calls. Pixel density is capped at 2 and the shadow map at 2048². Mobile Safari compatibility has not been verified; this proof targets desktop playability.
+The default view measured approximately 15,658 rendered triangles and 94 draw calls (renderer counters, not a frame-rate guarantee). Grass and flowers use two instanced draw calls. Pixel density is capped at 2 and the shadow map at 2048². Mobile Safari compatibility has not been verified; this proof targets desktop playability.
+
+## Character motion pass
+
+The explorer now uses distance-driven steps with alternating planted and lifted boots, bending legs, shoulder-based arm swing, body weight shift, and scarf follow-through. The pose eases back to standing on arrival without changing movement speed or camera tracking.
+
+Nibbit breathes, blinks, sniffs, twitches its ears, and makes little digging motions. Nearby explorers get a turn, a curious head tilt, and a greeting hop. Its navigation cell and clickable approach behavior are unchanged.
+
+Browser regression checks passed again, plus sampled checks for alternating foot contact/lift, arm swing, return to rest, blinking, sniffing, and digging. No runtime errors.

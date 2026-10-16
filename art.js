@@ -81,47 +81,108 @@ export function buildArt(scene, renderer, world, trees, rocks, nibbitCell) {
   flowers.count=fi;grass.receiveShadow=true;scene.add(grass,flowers);
 
   const player=new THREE.Group();const coat=mat('#386c6c'), leather=mat('#674936'), skin=mat('#e7b889'), scarf=mat('#d47a49');
-  const leftLeg=blob(player,leather,[-.13,.23,0],[.11,.23,.13]);
-  const rightLeg=blob(player,leather,[.13,.23,0],[.11,.23,.13]);
-  blob(player,coat,[0,.66,0],[.29,.36,.22]);
-  for(const s of [-1,1]){blob(player,coat,[s*.29,.68,0],[.1,.26,.12]);blob(player,skin,[s*.30,.43,.015],[.085,.09,.08]);}
-  blob(player,skin,[0,1.14,.01],[.23,.25,.21]);
-  blob(player,leather,[0,1.28,-.035],[.25,.16,.22]);
-  blob(player,mat('#c7b980'),[0,1.38,0],[.36,.045,.31]);
-  blob(player,mat('#a49c68'),[0,1.46,-.02],[.25,.14,.23]);
-  blob(player,scarf,[0,.94,0],[.29,.09,.25]);
-  const scarfTail=blob(player,scarf,[.21,.77,-.24],[.09,.25,.045]);scarfTail.rotation.z=-.25;
-  blob(player,leather,[0,.68,-.24],[.22,.26,.12]);
-  blob(player,palette.cream,[0,.81,-.35],[.21,.075,.065]);
-  for(const s of [-1,1])blob(player,palette.ink,[s*.085,1.15,.202],[.025,.035,.018]);
+  const torso=new THREE.Group();player.add(torso);
+  const legs=[-1,1].map(side=>{
+    const thigh=blob(player,coat,[0,0,0],[.09,.1,.09]);
+    const shin=blob(player,leather,[0,0,0],[.085,.1,.085]);
+    const boot=blob(player,leather,[side*.14,.085,0],[.115,.085,.17]);
+    return {side,thigh,shin,boot};
+  });
+  blob(torso,coat,[0,.69,0],[.27,.29,.21]);
+  const arms=[-1,1].map(side=>{
+    const arm=new THREE.Group();arm.position.set(side*.28,.85,0);torso.add(arm);
+    blob(arm,coat,[0,-.12,0],[.095,.19,.11]);
+    blob(arm,skin,[0,-.32,.015],[.085,.09,.08]);return arm;
+  });
+  blob(torso,skin,[0,1.14,.01],[.23,.25,.21]);
+  blob(torso,leather,[0,1.28,-.035],[.25,.16,.22]);
+  blob(torso,mat('#c7b980'),[0,1.38,0],[.36,.045,.31]);
+  blob(torso,mat('#a49c68'),[0,1.46,-.02],[.25,.14,.23]);
+  blob(torso,scarf,[0,.94,0],[.29,.09,.25]);
+  const scarfTail=blob(torso,scarf,[.21,.77,-.24],[.09,.25,.045]);scarfTail.rotation.z=-.25;
+  blob(torso,leather,[0,.68,-.24],[.22,.26,.12]);
+  blob(torso,palette.cream,[0,.81,-.35],[.21,.075,.065]);
+  for(const s of [-1,1])blob(torso,palette.ink,[s*.085,1.15,.202],[.025,.035,.018]);
   scene.add(player);
 
-  const nibbit=new THREE.Group();
-  blob(nibbit,palette.fur,[0,.40,0],[.43,.38,.43]);
-  blob(nibbit,palette.cream,[0,.4,.33],[.30,.27,.12]);
-  blob(nibbit,palette.fur,[0,.72,.14],[.35,.29,.30]);
+  const nibbit=new THREE.Group(), nibbitPose=new THREE.Group();nibbit.add(nibbitPose);
+  const faceParts=[],eyes=[],paws=[];
+  const faceBlob=(...args)=>{const mesh=blob(nibbitPose,...args);faceParts.push(mesh);return mesh;};
+  blob(nibbitPose,palette.fur,[0,.40,0],[.43,.38,.43]);
+  blob(nibbitPose,palette.cream,[0,.4,.33],[.30,.27,.12]);
+  faceBlob(palette.fur,[0,.72,.14],[.35,.29,.30]);
   const ears=[];
   for(const s of [-1,1]){
     const ear=new THREE.Group();ear.position.set(s*.19,.89,.08);ear.rotation.z=-s*.23;
     blob(ear,palette.fur,[0,.23,0],[.115,.34,.105]);
-    blob(ear,palette.pink,[0,.25,.085],[.058,.24,.025]);nibbit.add(ear);ears.push(ear);
-    blob(nibbit,palette.ink,[s*.16,.77,.39],[.057,.065,.032]);
-    blob(nibbit,palette.cream,[s*.15-.012,.79,.419],[.017,.018,.009]);
-    blob(nibbit,palette.cream,[s*.1,.62,.41],[.12,.085,.07]);
-    blob(nibbit,palette.fur,[s*.34,.24,.24],[.17,.12,.2]);
-    for(let j=0;j<3;j++)blob(nibbit,palette.cream,[s*.34+(j-1)*.055,.21,.405],[.026,.035,.065]);
-    blob(nibbit,palette.fur,[s*.25,.12,-.16],[.18,.13,.22]);
+    blob(ear,palette.pink,[0,.25,.085],[.058,.24,.025]);nibbitPose.add(ear);faceParts.push(ear);ears.push(ear);
+    eyes.push(faceBlob(palette.ink,[s*.16,.77,.39],[.057,.065,.032]));
+    eyes.push(faceBlob(palette.cream,[s*.15-.012,.79,.419],[.017,.018,.009]));
+    faceBlob(palette.cream,[s*.1,.62,.41],[.12,.085,.07]);
+    const paw=new THREE.Group();nibbitPose.add(paw);paws.push(paw);
+    blob(paw,palette.fur,[s*.34,.24,.24],[.17,.12,.2]);
+    for(let j=0;j<3;j++)blob(paw,palette.cream,[s*.34+(j-1)*.055,.21,.405],[.026,.035,.065]);
+    blob(nibbitPose,palette.fur,[s*.25,.12,-.16],[.18,.13,.22]);
   }
-  blob(nibbit,palette.pink,[0,.68,.48],[.065,.045,.035]);
-  blob(nibbit,palette.cream,[0,.36,-.43],[.16,.16,.14]);
+  const nose=faceBlob(palette.pink,[0,.68,.48],[.065,.045,.035]);
+  blob(nibbitPose,palette.cream,[0,.36,-.43],[.16,.16,.14]);
+  const nibbitHead=new THREE.Group();nibbitHead.position.set(0,.72,.14);nibbitPose.add(nibbitHead);
+  nibbitPose.updateMatrixWorld(true);faceParts.forEach(part=>nibbitHead.attach(part));
+  const eyeHeights=eyes.map(eye=>eye.scale.y);
   nibbit.position.copy(world(...nibbitCell));nibbit.rotation.y=.35;
   nibbit.traverse(o=>{if(o.isMesh)o.userData.nibbit=true});scene.add(nibbit);
   const marker=new THREE.Mesh(new THREE.RingGeometry(.20,.26,32),new THREE.MeshBasicMaterial({color:'#f4dd9c',transparent:true,opacity:.8,side:THREE.DoubleSide}));
   marker.rotation.x=-Math.PI/2;marker.position.y=.025;marker.visible=false;scene.add(marker);
+  let phase=0,walkBlend=0,previousPosition=null,lastTime=null,nearLastFrame=false,greeting=0;
+  const up=new THREE.Vector3(0,1,0),segment=new THREE.Vector3();
+  function limb(mesh,from,to){
+    segment.subVectors(to,from);mesh.position.copy(from).add(to).multiplyScalar(.5);
+    mesh.scale.y=segment.length()/2;mesh.quaternion.setFromUnitVectors(up,segment.normalize());
+  }
+  const hip=new THREE.Vector3(),knee=new THREE.Vector3(),ankle=new THREE.Vector3();
   return {player,nibbit,marker,animateArt(time,moving){
-    leftLeg.rotation.x=moving?Math.sin(time*10)*.5:0;rightLeg.rotation.x=-leftLeg.rotation.x;
-    scarfTail.rotation.x=Math.sin(time*3)*.08;
-    ears[0].rotation.z=-.23+Math.sin(time*1.7)*.04;ears[1].rotation.z=.23+Math.sin(time*1.5)*.04;
+    const dt=lastTime===null?0:Math.min(time-lastTime,.04);lastTime=time;
+    const travelled=previousPosition?player.position.distanceTo(previousPosition):0;
+    if(!previousPosition)previousPosition=player.position.clone();previousPosition.copy(player.position);
+    // Advance by distance, not wall time: planted feet match the navigation speed.
+    if(travelled<.3)phase+=travelled/1.12*Math.PI*2;
+    walkBlend=THREE.MathUtils.damp(walkBlend,moving?1:0,18,dt);
+    const bounce=(1-Math.cos(phase*2))*.018*walkBlend;
+    torso.position.y=bounce;torso.rotation.z=Math.sin(phase)*.035*walkBlend;
+    torso.rotation.x=.035*walkBlend;
+    legs.forEach((leg,i)=>{
+      const u=((phase/(Math.PI*2)+i*.5)%1+1)%1;
+      const swing=(u-.5)*2;
+      const z=(u<.5?.28-u*1.12:-.28+.56*(swing*swing*(3-2*swing)))*walkBlend;
+      const lift=u<.5?0:Math.sin(swing*Math.PI)*.15*walkBlend;
+      leg.boot.position.set(leg.side*.14,.085+lift,z);
+      hip.set(leg.side*.14,.48+bounce,0);ankle.set(leg.side*.14,.14+lift,z);
+      knee.copy(hip).lerp(ankle,.5);knee.z+=.07+lift*.5;
+      limb(leg.thigh,hip,knee);limb(leg.shin,knee,ankle);
+      arms[i].rotation.x=Math.sin(phase+i*Math.PI)*.55*walkBlend;
+    });
+    scarfTail.rotation.x=Math.sin(phase-.5)*.13*walkBlend+Math.sin(time*3)*.025;
+
+    const proximity=player.position.distanceTo(nibbit.position),near=proximity<2.6;
+    if(near&&!nearLastFrame)greeting=1;nearLastFrame=near;
+    greeting=Math.max(0,greeting-dt*.85);
+    const cycle=time%12,sniff=cycle>2&&cycle<4,dig=!near&&cycle>6&&cycle<8;
+    const desiredYaw=near?Math.atan2(player.position.x-nibbit.position.x,player.position.z-nibbit.position.z):.35+Math.sin(time*.45)*.35;
+    const turn=Math.atan2(Math.sin(desiredYaw-nibbit.rotation.y),Math.cos(desiredYaw-nibbit.rotation.y));
+    nibbit.rotation.y+=turn*(1-Math.exp(-dt*4));
+    const hop=greeting>0?Math.max(0,Math.sin((1-greeting)*Math.PI*2))*.16:0;
+    nibbitPose.position.y=hop;
+    nibbitPose.scale.set(1+Math.sin(time*2)*.012,1+Math.sin(time*2+.5)*.018,1);
+    nibbitPose.rotation.x=THREE.MathUtils.damp(nibbitPose.rotation.x,dig?.22:0,8,dt);
+    nibbitHead.rotation.z=THREE.MathUtils.damp(nibbitHead.rotation.z,near?Math.sin(time*.8)*.12:Math.sin(time*.7)*.04,5,dt);
+    nibbitHead.rotation.x=sniff?Math.sin(time*16)*.045:Math.sin(time*1.5)*.025;
+    nose.scale.y=.045*(sniff?1+Math.sin(time*20)*.2:1);
+    const blinkTime=time%4.7,blink=blinkTime<.16?Math.max(.08,Math.abs(blinkTime-.08)/.08):1;
+    eyes.forEach((eye,i)=>eye.scale.y=eyeHeights[i]*blink);
+    ears[0].rotation.z=-.23+Math.sin(time*1.7)*.06+(greeting>0?-.14*greeting:0);
+    ears[1].rotation.z=.23+Math.sin(time*1.5)*.06;
+    ears[1].rotation.x=cycle>9&&cycle<9.6?Math.sin((cycle-9)*Math.PI/.6)*.35:0;
+    paws.forEach((paw,i)=>{paw.position.y=dig?Math.max(0,Math.sin(time*18+i*Math.PI))*.1:0;paw.position.z=dig?Math.sin(time*18+i*Math.PI)*.06:0;});
     marker.scale.setScalar(1+Math.sin(time*4)*.08);
   }};
 }
