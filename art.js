@@ -166,11 +166,11 @@ export function buildArt(scene, renderer, world, trees, rocks, nibbitCell) {
     const proximity=player.position.distanceTo(nibbit.position),near=proximity<2.6;
     if(near&&!nearLastFrame)greeting=1;nearLastFrame=near;
     greeting=Math.max(0,greeting-dt*.85);
-    const cycle=time%12,sniff=cycle>2&&cycle<4,dig=!near&&cycle>6&&cycle<8;
-    const desiredYaw=near?Math.atan2(player.position.x-nibbit.position.x,player.position.z-nibbit.position.z):.35+Math.sin(time*.45)*.35;
+    const cycle=time%12,sniff=cycle>2&&cycle<4,dig=!near&&!nibbit.userData.roaming&&cycle>6&&cycle<8;
+    const desiredYaw=nibbit.userData.roaming?nibbit.userData.roamHeading:near?Math.atan2(player.position.x-nibbit.position.x,player.position.z-nibbit.position.z):.35+Math.sin(time*.45)*.35;
     const turn=Math.atan2(Math.sin(desiredYaw-nibbit.rotation.y),Math.cos(desiredYaw-nibbit.rotation.y));
     nibbit.rotation.y+=turn*(1-Math.exp(-dt*4));
-    const hop=greeting>0?Math.max(0,Math.sin((1-greeting)*Math.PI*2))*.16:0;
+    const hop=greeting>0&&!nibbit.userData.roaming?Math.max(0,Math.sin((1-greeting)*Math.PI*2))*.16:0;
     nibbitPose.position.y=hop;
     nibbitPose.scale.set(1+Math.sin(time*2)*.012,1+Math.sin(time*2+.5)*.018,1);
     nibbitPose.rotation.x=THREE.MathUtils.damp(nibbitPose.rotation.x,dig?.22:0,8,dt);

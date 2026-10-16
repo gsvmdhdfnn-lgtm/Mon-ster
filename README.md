@@ -65,3 +65,9 @@ The explorer now uses distance-driven steps with alternating planted and lifted 
 Nibbit breathes, blinks, sniffs, twitches its ears, and makes little digging motions. Nearby explorers get a turn, a curious head tilt, and a greeting hop. Its navigation cell and clickable approach behavior are unchanged.
 
 Browser regression checks passed again, plus sampled checks for alternating foot contact/lift, arm swing, return to rest, blinking, sniffing, and digging. No runtime errors.
+
+## Nibbit roaming
+
+Nibbit chooses a free cardinal neighbour after a random pause and hops there. It respects the map boundary, trees, rocks, the player, and the player’s planned route. Both hop endpoints are temporarily reserved for pathfinding, with the old cell released on landing. Clicking a moving Nibbit targets a neighbour of its landing cell. It pauses while being approached or while the explorer is nearby, then resumes wandering after the explorer leaves.
+
+Validated with 25,000 simulated roaming updates (boundaries, obstacle/route avoidance, and reservation cleanup), an actual mid-hop pointer click and approach, nearby pausing, and the desktop movement/camera regression checks.

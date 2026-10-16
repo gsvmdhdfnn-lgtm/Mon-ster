@@ -25,7 +25,7 @@
   <div id="nibbit">Nibbit watches you curiously.</div>
   <script type="module">
     import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js';
-    import { buildArt } from './art.js?v=personality-002';
+    import { buildArt } from './art.js?v=roaming-003';
     const SIZE=20, HALF=SIZE/2;
     const blocked=new Set(); const key=(x,z)=>`${x},${z}`;
     const trees=[[5,4],[14,6],[7,14]], rocks=[[3,10],[16,11],[12,3]], nibbitCell=[11,9];
@@ -41,10 +41,37 @@
     function pathfind(start,goal){if(!valid(...goal))return null;const open=[start],came=new Map(),g=new Map([[key(...start),0]]),f=new Map([[key(...start),heuristic(start,goal)]]);while(open.length){open.sort((a,b)=>(f.get(key(...a))??1e9)-(f.get(key(...b))??1e9));const cur=open.shift();if(cur[0]===goal[0]&&cur[1]===goal[1]){const p=[cur];let c=cur;while(came.has(key(...c))){c=came.get(key(...c));p.push(c)}return p.reverse().slice(1)}for(const [dx,dz] of dirs){const n=[cur[0]+dx,cur[1]+dz];if(!valid(...n))continue;if(dx&&dz&&(!valid(cur[0]+dx,cur[1])||!valid(cur[0],cur[1]+dz)))continue;const ng=(g.get(key(...cur))??1e9)+(dx&&dz?1.414:1);if(ng<(g.get(key(...n))??1e9)){came.set(key(...n),cur);g.set(key(...n),ng);f.set(key(...n),ng+heuristic(n,goal));if(!open.some(v=>v[0]===n[0]&&v[1]===n[1]))open.push(n)}}}return null}
     function nearestNibbitApproach(){let best=null,score=1e9;for(const [dx,dz] of dirs){const c=[nibbitCell[0]+dx,nibbitCell[1]+dz];if(valid(...c)){const s=heuristic(playerCell,c);if(s<score){score=s;best=c}}}return best}
     let route=[],moving=false,nibbitTarget=false;function setDestination(cell,isNibbit=false){const p=pathfind(playerCell,cell);if(p){route=p;moving=true;marker.position.copy(world(...cell));marker.position.y=.025;marker.visible=true;nibbitTarget=isNibbit;document.querySelector('#status').textContent=isNibbit?'Approaching Nibbit…':'Exploring the clearing…'}}
+
+    // Reserve both ends of a hop. Existing routes take priority over wandering.
+    let roamWait=3,roamStep=null;
+    const roamFrom=new THREE.Vector3(),roamTo=new THREE.Vector3();
+    function updateNibbitRoaming(dt){
+      if(roamStep){
+        roamStep.elapsed=Math.min(roamStep.elapsed+dt,.72);
+        const t=roamStep.elapsed/.72,ease=t*t*(3-2*t);
+        nibbit.position.lerpVectors(roamFrom,roamTo,ease);
+        nibbit.position.y=Math.sin(t*Math.PI)*.19;
+        if(t>=1){
+          blocked.delete(key(...roamStep.from));nibbit.position.copy(roamTo);
+          roamStep=null;nibbit.userData.roaming=false;roamWait=1.8+Math.random()*3.2;
+        }
+        return;
+      }
+      if(nibbitTarget||player.position.distanceTo(nibbit.position)<2.6){roamWait=Math.max(roamWait,1.5);return;}
+      roamWait-=dt;if(roamWait>0)return;
+      const choices=dirs.slice(0,4).map(([dx,dz])=>[nibbitCell[0]+dx,nibbitCell[1]+dz]).filter(cell=>
+        valid(...cell)&&key(...cell)!==key(...playerCell)&&
+        !route.some(step=>key(...step)===key(...cell))&&world(...cell).distanceTo(player.position)>2.1);
+      if(!choices.length){roamWait=1;return;}
+      const next=choices[Math.floor(Math.random()*choices.length)];
+      roamStep={from:[...nibbitCell],elapsed:0};roamFrom.copy(nibbit.position);roamTo.copy(world(...next));
+      nibbitCell[0]=next[0];nibbitCell[1]=next[1];blocked.add(key(...next));
+      nibbit.userData.roaming=true;nibbit.userData.roamHeading=Math.atan2(roamTo.x-roamFrom.x,roamTo.z-roamFrom.z);
+    }
     const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let down=null,dragged=false,last={x:0,y:0};function pointerPos(e){return{x:e.clientX,y:e.clientY}}
     renderer.domElement.addEventListener('pointerdown',e=>{down=pointerPos(e);last=pointerPos(e);dragged=false});renderer.domElement.addEventListener('pointermove',e=>{if(!down)return;const p=pointerPos(e),dx=p.x-last.x,dy=p.y-last.y;if(Math.hypot(p.x-down.x,p.y-down.y)>6)dragged=true;if(dragged){yaw-=dx*.008;pitch=THREE.MathUtils.clamp(pitch+dy*.005,.38,1.12);updateCamera()}last=p});renderer.domElement.addEventListener('pointerup',e=>{if(!down)return;if(!dragged){mouse.x=e.clientX/innerWidth*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(mouse,camera);const hits=ray.intersectObjects(scene.children,true);const nHit=hits.find(h=>h.object.userData.nibbit);if(nHit){const c=nearestNibbitApproach();if(c)setDestination(c,true)}else{const gh=hits.find(h=>h.object.name==='ground');if(gh){const x=Math.floor(gh.point.x+HALF),z=Math.floor(gh.point.z+HALF);if(valid(x,z))setDestination([x,z]);else document.querySelector('#status').textContent='There’s something in the way.'}}}down=null});
     renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();distance=THREE.MathUtils.clamp(distance+e.deltaY*.012,7,20);updateCamera()},{passive:false});document.querySelector('#reset').addEventListener('click',()=>{yaw=.72;pitch=.78;distance=14;updateCamera()});
-    const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04);if(moving&&!route.length){moving=false;marker.visible=false;if(nibbitTarget){document.querySelector('#status').textContent='Standing beside Nibbit';const note=document.querySelector('#nibbit');note.style.opacity=1;setTimeout(()=>note.style.opacity=0,1800);nibbitTarget=false}}if(moving&&route.length){const next=route[0],dest=world(...next),delta=dest.clone().sub(player.position),len=delta.length(),speed=2.35;if(len<.04){player.position.copy(dest);playerCell=next;route.shift();if(!route.length){moving=false;marker.visible=false;document.querySelector('#status').textContent=nibbitTarget?'Standing beside Nibbit':'Click ground to walk';if(nibbitTarget){const note=document.querySelector('#nibbit');note.style.opacity=1;setTimeout(()=>note.style.opacity=0,1800)}nibbitTarget=false}}else{delta.normalize();player.position.addScaledVector(delta,Math.min(speed*dt,len));player.rotation.y=Math.atan2(delta.x,delta.z)}}animateArt(performance.now()/1000,moving);updateCamera();renderer.render(scene,camera)}animate();
+    const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04);if(moving&&!route.length){moving=false;marker.visible=false;if(nibbitTarget){document.querySelector('#status').textContent='Standing beside Nibbit';const note=document.querySelector('#nibbit');note.style.opacity=1;setTimeout(()=>note.style.opacity=0,1800);nibbitTarget=false}}if(moving&&route.length){const next=route[0],dest=world(...next),delta=dest.clone().sub(player.position),len=delta.length(),speed=2.35;if(len<.04){player.position.copy(dest);playerCell=next;route.shift();if(!route.length){moving=false;marker.visible=false;document.querySelector('#status').textContent=nibbitTarget?'Standing beside Nibbit':'Click ground to walk';if(nibbitTarget){const note=document.querySelector('#nibbit');note.style.opacity=1;setTimeout(()=>note.style.opacity=0,1800)}nibbitTarget=false}}else{delta.normalize();player.position.addScaledVector(delta,Math.min(speed*dt,len));player.rotation.y=Math.atan2(delta.x,delta.z)}}updateNibbitRoaming(dt);animateArt(performance.now()/1000,moving);updateCamera();renderer.render(scene,camera)}animate();
     addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
   </script>
 </body>
