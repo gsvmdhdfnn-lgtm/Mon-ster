@@ -1,4 +1,5 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js';
+import { makeDetail } from './art-detail.js?v=reference-004';
 
 // All decoration is visual only: Foundation 001 owns the navigation cells.
 export function buildArt(scene, renderer, world, trees, rocks, nibbitCell) {
@@ -6,20 +7,23 @@ export function buildArt(scene, renderer, world, trees, rocks, nibbitCell) {
   const random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
   const mat = color => new THREE.MeshStandardMaterial({color, roughness: 1, flatShading: true});
   const palette = {bark: mat('#79513b'), leaf: mat('#527643'), light: mat('#80964c'), dark: mat('#365d42'), stone: mat('#889087'), moss: mat('#657b48'), fur: mat('#aa7951'), cream: mat('#ead4a3'), pink: mat('#c38b79'), ink: mat('#282c2c')};
-  const sphere = new THREE.IcosahedronGeometry(1, 1);
+  const detail=makeDetail(random);
+  Object.assign(palette,{fur:detail.fur,cream:detail.cream,bark:detail.bark,stone:detail.stone});
+  palette.pink=mat('#96735f');palette.ink=new THREE.MeshStandardMaterial({color:'#160f0c',roughness:.22});
+  const sphere=detail.soft;
   function blob(parent, material, position, scale, geometry = sphere) {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(...position); mesh.scale.set(...scale);
     mesh.castShadow = true; mesh.receiveShadow = true; parent.add(mesh); return mesh;
   }
-  scene.background = new THREE.Color('#b9c9b9');
-  scene.fog = new THREE.Fog('#b9c9b9', 27, 58);
+  scene.background = new THREE.Color('#aebfc0');
+  scene.fog = new THREE.Fog('#aebfc0', 27, 58);
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.18;
-  scene.add(new THREE.HemisphereLight('#e0eddf', '#61583f', 2));
-  const sun = new THREE.DirectionalLight('#ffe0a1', 3.1);
+  renderer.toneMappingExposure = 1.05;
+  scene.add(new THREE.HemisphereLight('#e0eddf', '#493f30', 1.45));
+  const sun = new THREE.DirectionalLight('#ffdfab', 2.8);
   sun.position.set(-10, 18, 8); sun.castShadow = true;
   Object.assign(sun.shadow.camera, {left:-15,right:15,top:15,bottom:-15,near:1,far:45});
   sun.shadow.mapSize.set(2048,2048); sun.shadow.normalBias=.035; sun.shadow.bias=-.0002;
@@ -27,60 +31,108 @@ export function buildArt(scene, renderer, world, trees, rocks, nibbitCell) {
 
   // A seeded painted texture keeps the walkable surface level and the grid invisible.
   const canvas = document.createElement('canvas'); canvas.width=canvas.height=1024;
-  const ctx=canvas.getContext('2d'); ctx.fillStyle='#7f9656';ctx.fillRect(0,0,1024,1024);
+  const ctx=canvas.getContext('2d'); ctx.fillStyle='#60783a';ctx.fillRect(0,0,1024,1024);
   for(let i=0;i<5000;i++) {
     const x=random()*1024,y=random()*1024,r=8+random()*70;
-    ctx.fillStyle=['#91a363','#6e884e','#a6ae70','#819956'][i%4];ctx.globalAlpha=.10;
+    ctx.fillStyle=['#7b9145','#4c6a36','#a1a85b','#657b3e'][i%4];ctx.globalAlpha=.10;
     ctx.beginPath();ctx.ellipse(x,y,r,r*.6,random()*6,0,Math.PI*2);ctx.fill();
   }
   ctx.globalAlpha=1;
   const trail = z => 1.8*Math.sin(z*.39)+.6;
   for(let i=0;i<2600;i++) {
     const z=random()*20-10, x=trail(z)+(random()+random()+random()-1.5)*1.6;
-    ctx.globalAlpha=.09;ctx.fillStyle=['#c3b17b','#b6a274','#dbca95'][i%3];
+    ctx.globalAlpha=.09;ctx.fillStyle=['#ab8859','#b2986a','#c6ab7a'][i%3];
     ctx.beginPath();ctx.ellipse((x+10)*51.2,(z+10)*51.2,12+random()*24,9+random()*18,0,0,Math.PI*2);ctx.fill();
   }
   ctx.globalAlpha=.13;
   for(let i=0;i<24000;i++){ctx.fillStyle=i%2?'#edf0bc':'#425b38';ctx.fillRect(random()*1024,random()*1024,1+random()*3,1+random()*2);}
+  // Leaf litter and inset chips give the path the broken, earthy surface of the reference.
+  for(let i=0;i<4200;i++){
+    const z=random()*20-10,x=random()*20-10,onPath=Math.abs(x-trail(z))<.95;
+    ctx.globalAlpha=onPath?.30:.2;ctx.fillStyle=onPath?['#806443','#d4bc8c','#967b53'][i%3]:['#394b28','#b1a65e','#77844a'][i%3];
+    const px=(x+10)*51.2,py=(z+10)*51.2,r=onPath?2+random()*5:1+random()*3;
+    ctx.beginPath();ctx.moveTo(px-r,py);ctx.lineTo(px-r*.4,py-r*.7);ctx.lineTo(px+r,py-r*.4);ctx.lineTo(px+r*.7,py+r*.7);ctx.lineTo(px-r*.5,py+r);ctx.closePath();ctx.fill();
+  }
   const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(20,20),new THREE.MeshStandardMaterial({map:texture,roughness:1}));
   ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;ground.name='ground';scene.add(ground);
   blob(scene,mat('#6f674b'),[0,-.48,0],[10,.47,10],new THREE.BoxGeometry(2,2,2));
   blob(scene,mat('#87935c'),[0,-.08,0],[10,.07,10],new THREE.BoxGeometry(2,2,2));
 
+  const leafMaterial=new THREE.MeshStandardMaterial({color:'#ffffff',roughness:1,side:THREE.DoubleSide});
+  const leafCount=6600,leaves=new THREE.InstancedMesh(detail.leaf,leafMaterial,leafCount);
+  const transform=new THREE.Object3D(),color=new THREE.Color();let leafIndex=0;
+  function branch(parent,start,end,radius){
+    const from=new THREE.Vector3(...start),to=new THREE.Vector3(...end),delta=to.clone().sub(from);
+    const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius*.55,radius,delta.length(),8),palette.bark);
+    mesh.position.copy(from).add(to).multiplyScalar(.5);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),delta.normalize());
+    mesh.castShadow=mesh.receiveShadow=true;parent.add(mesh);
+  }
   trees.forEach(([x,z],index)=>{
     const g=new THREE.Group();g.position.copy(world(x,z));scene.add(g);
-    blob(g,palette.bark,[0,.8,0],[.21,.8,.21],new THREE.CylinderGeometry(.7,1,2,7));
-    for(let i=0;i<5;i++){
-      const angle=i*Math.PI*2/5;
-      const root=blob(g,palette.bark,[Math.sin(angle)*.23,.09,Math.cos(angle)*.23],[.13,.1,.36]);root.rotation.y=angle;
+    branch(g,[0,0,0],[.08,1.25,.03],.23);branch(g,[.08,1.25,.03],[-.07,2.3,0],.14);
+    for(let i=0;i<6;i++){
+      const angle=i*2.399;
+      branch(g,[0,.16,0],[Math.sin(angle)*.43,.025,Math.cos(angle)*.43],.10);
+      branch(g,[.04,.9+i*.14,0],[Math.cos(angle)*.92,2+i*.13,Math.sin(angle)*.8],.075);
     }
-    for(let i=0;i<9;i++) {
-      const a=i*2.4+index,r=i===8?0:.65;
-      blob(g,[palette.leaf,palette.light,palette.dark][i%3],[Math.cos(a)*r,1.9+(i%3)*.39,Math.sin(a)*r],[.87,.73,.82]);
+    // Thousands of small cupped leaves, clustered around irregular branch tips.
+    for(let i=0;i<2200;i++){
+      const cluster=i%11,angle=cluster*2.399+index,ring=cluster<8?.78:.26;
+      const cy=2.25+(cluster%3)*.25,theta=random()*Math.PI*2,v=random()*2-1,r=Math.cbrt(random());
+      const radial=Math.sqrt(1-v*v)*r;
+      transform.position.set(g.position.x+Math.cos(angle)*ring+Math.cos(theta)*radial*.78,cy+v*r*.65,g.position.z+Math.sin(angle)*ring+Math.sin(theta)*radial*.74);
+      transform.rotation.set(random()*2.5-.6,random()*Math.PI*2,random()*Math.PI*2);
+      const size=.12+random()*.17;transform.scale.set(size*.8,size,size);transform.updateMatrix();
+      leaves.setMatrixAt(leafIndex,transform.matrix);
+      color.setHSL(.20+random()*.045,.43+random()*.2,.19+random()*.17+(transform.position.y-1.7)*.035);
+      leaves.setColorAt(leafIndex++,color);
     }
   });
+  leaves.castShadow=leaves.receiveShadow=true;scene.add(leaves);
   rocks.forEach(([x,z],i)=>{
     const g=new THREE.Group();g.position.copy(world(x,z));scene.add(g);
-    const rock=blob(g,palette.stone,[0,.34,0],[.48,.43,.4],new THREE.DodecahedronGeometry(1));rock.rotation.set(.1,i*.7,.2);
-    blob(g,palette.moss,[-.08,.62,.02],[.32,.1,.28]);
-    blob(g,palette.stone,[.3,.1,.22],[.14,.14,.19]);
+    const rock=blob(g,palette.stone,[0,.33,0],[.47,.44,.42],new THREE.IcosahedronGeometry(1,1));rock.rotation.set(.15,i*.8,.2);
+    for(let j=0;j<18;j++){
+      const angle=random()*6.28,r=random()*.34;
+      blob(g,palette.moss,[Math.cos(angle)*r,.61-r*.3,Math.sin(angle)*r],[.07+random()*.06,.025,.06],new THREE.IcosahedronGeometry(1,0));
+    }
+    blob(g,palette.stone,[.30,.09,.22],[.14,.11,.16],new THREE.IcosahedronGeometry(1,0));
   });
-  // One draw call for meadow tufts, one for tiny flowers. No new obstacles.
-  const grassGeo=new THREE.ConeGeometry(.085,.25,3);
-  const grass=new THREE.InstancedMesh(grassGeo,mat('#678344'),1000);
-  const flowers=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.045,0),mat('#f2d99a'),140);
-  const dummy=new THREE.Object3D();let gi=0,fi=0;
-  while(gi<1000){
-    const x=random()*19.6-9.8,z=random()*19.6-9.8;
-    if(Math.abs(x-trail(z))<1.3)continue;
-    if([...trees,...rocks,nibbitCell,[9,16]].some(c=>world(...c).distanceTo(new THREE.Vector3(x,0,z))<.65))continue;
-    dummy.position.set(x,.07,z);dummy.rotation.set(0,random()*6.28,.15);dummy.scale.setScalar(.6+random()*.8);dummy.updateMatrix();grass.setMatrixAt(gi++,dummy.matrix);
-    if(fi<140&&random()<.2){dummy.position.y=.18;dummy.scale.setScalar(1);dummy.updateMatrix();flowers.setMatrixAt(fi++,dummy.matrix);}
+  // Bent blades and proper petalled flowers, distributed in patches rather than a uniform lawn.
+  const meadowMaterial=new THREE.MeshStandardMaterial({color:'#ffffff',side:THREE.DoubleSide,roughness:1});
+  const grass=new THREE.InstancedMesh(detail.grass,meadowMaterial,3200);
+  const petalGeometry=new THREE.BufferGeometry(),petalVertices=[];
+  for(let p=0;p<5;p++){
+    const angle=p*Math.PI*2/5,x=Math.cos(angle),z=Math.sin(angle),w=.022;
+    petalVertices.push(0,0,0,x*.065-z*w,.015,z*.065+x*w,x*.085,0,z*.085);
+    petalVertices.push(0,0,0,x*.085,0,z*.085,x*.065+z*w,.015,z*.065-x*w);
   }
-  flowers.count=fi;grass.receiveShadow=true;scene.add(grass,flowers);
+  petalGeometry.setAttribute('position',new THREE.Float32BufferAttribute(petalVertices,3));petalGeometry.computeVertexNormals();
+  const flowers=new THREE.InstancedMesh(petalGeometry,meadowMaterial,420),centers=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.018,0),mat('#d7a638'),420);
+  const dummy=new THREE.Object3D();let gi=0,fi=0;
+  while(gi<3200){
+    const x=random()*19.7-9.85,z=random()*19.7-9.85;
+    if(Math.abs(x-trail(z))<.9+random()*.5)continue;
+    if(Math.sin(x*1.4)+Math.cos(z*1.8)<-.15&&random()<.94)continue;
+    if([...trees,...rocks,nibbitCell,[9,16]].some(c=>world(...c).distanceTo(new THREE.Vector3(x,0,z))<.50))continue;
+    dummy.position.set(x,.005,z);dummy.rotation.set(0,random()*6.28,0);const scale=.28+random()*.80;dummy.scale.setScalar(scale);dummy.updateMatrix();grass.setMatrixAt(gi,dummy.matrix);
+    grass.setColorAt(gi++,color.setHSL(.19+random()*.05,.48,.22+random()*.16));
+    if(fi<420&&random()<.14){
+      dummy.position.y=.15*scale;dummy.scale.setScalar(.65+random()*.6);dummy.updateMatrix();flowers.setMatrixAt(fi,dummy.matrix);centers.setMatrixAt(fi,dummy.matrix);
+      flowers.setColorAt(fi++,new THREE.Color(['#f0e8c5','#e5d9b4','#b9a6ca','#d8bc79'][Math.floor(random()*4)]));
+    }
+  }
+  flowers.count=centers.count=fi;grass.receiveShadow=true;scene.add(grass,flowers,centers);
+  // Flat gravel stays decorative and cannot create unexpected collision obstacles.
+  const gravel=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,0),palette.stone,350);
+  for(let i=0;i<350;i++){
+    const z=random()*19.6-9.8,x=trail(z)+(random()-.5)*2;
+    dummy.position.set(x,.01,z);dummy.rotation.set(0,random()*6.28,0);const r=.025+random()*.065;dummy.scale.set(r,.012+random()*.013,r*.7);dummy.updateMatrix();gravel.setMatrixAt(i,dummy.matrix);
+  }
+  gravel.receiveShadow=true;scene.add(gravel);
 
-  const player=new THREE.Group();const coat=mat('#386c6c'), leather=mat('#674936'), skin=mat('#e7b889'), scarf=mat('#d47a49');
+  const player=new THREE.Group();const coat=mat('#4c6540'), leather=mat('#674936'), skin=mat('#e7b889'), scarf=mat('#92764a');
   const torso=new THREE.Group();player.add(torso);
   const legs=[-1,1].map(side=>{
     const thigh=blob(player,coat,[0,0,0],[.09,.1,.09]);
@@ -95,10 +147,21 @@ export function buildArt(scene, renderer, world, trees, rocks, nibbitCell) {
     blob(arm,skin,[0,-.32,.015],[.085,.09,.08]);return arm;
   });
   blob(torso,skin,[0,1.14,.01],[.23,.25,.21]);
-  blob(torso,leather,[0,1.28,-.035],[.25,.16,.22]);
-  blob(torso,mat('#c7b980'),[0,1.38,0],[.36,.045,.31]);
-  blob(torso,mat('#a49c68'),[0,1.46,-.02],[.25,.14,.23]);
-  blob(torso,scarf,[0,.94,0],[.29,.09,.25]);
+  const hair=mat('#513322');
+  blob(torso,hair,[0,1.30,-.025],[.25,.18,.23]);
+  for(let i=0;i<18;i++){
+    const a=i*2.399,r=.16+random()*.04;
+    const lock=blob(torso,hair,[Math.cos(a)*r,1.31+random()*.12,Math.sin(a)*r],[.085,.11,.085],new THREE.IcosahedronGeometry(1,1));lock.rotation.z=Math.cos(a)*.5;
+  }
+  for(const side of [-1,1]){
+    blob(torso,hair,[side*.21,1.18,-.025],[.05,.13,.14]);
+    blob(torso,skin,[side*.24,1.12,.015],[.045,.07,.055]);
+    blob(torso,leather,[side*.16,.72,.20],[.026,.23,.025]);
+  }
+  blob(torso,leather,[0,.51,0],[.28,.045,.22]);
+  blob(torso,mat('#b49a5c'),[.02,.51,.225],[.045,.032,.015]);
+  blob(torso,skin,[0,1.10,.225],[.045,.055,.045]);
+  blob(torso,scarf,[0,.94,0],[.24,.045,.20]);
   const scarfTail=blob(torso,scarf,[.21,.77,-.24],[.09,.25,.045]);scarfTail.rotation.z=-.25;
   blob(torso,leather,[0,.68,-.24],[.22,.26,.12]);
   blob(torso,palette.cream,[0,.81,-.35],[.21,.075,.065]);
@@ -108,23 +171,32 @@ export function buildArt(scene, renderer, world, trees, rocks, nibbitCell) {
   const nibbit=new THREE.Group(), nibbitPose=new THREE.Group();nibbit.add(nibbitPose);
   const faceParts=[],eyes=[],paws=[];
   const faceBlob=(...args)=>{const mesh=blob(nibbitPose,...args);faceParts.push(mesh);return mesh;};
-  blob(nibbitPose,palette.fur,[0,.40,0],[.43,.38,.43]);
-  blob(nibbitPose,palette.cream,[0,.4,.33],[.30,.27,.12]);
-  faceBlob(palette.fur,[0,.72,.14],[.35,.29,.30]);
+  blob(nibbitPose,palette.fur,[0,.40,0],[.43,.41,.39]);
+  detail.coatTufts(nibbitPose,[0,.40,0],[.415,.395,.375],320,palette.fur);
+  blob(nibbitPose,palette.cream,[0,.40,.315],[.27,.28,.10]);
+  faceBlob(palette.fur,[0,.72,.12],[.355,.315,.305]);
+  faceParts.push(detail.coatTufts(nibbitPose,[0,.72,.12],[.345,.305,.295],180,palette.fur,true));
   const ears=[];
   for(const s of [-1,1]){
-    const ear=new THREE.Group();ear.position.set(s*.19,.89,.08);ear.rotation.z=-s*.23;
-    blob(ear,palette.fur,[0,.23,0],[.115,.34,.105]);
-    blob(ear,palette.pink,[0,.25,.085],[.058,.24,.025]);nibbitPose.add(ear);faceParts.push(ear);ears.push(ear);
-    eyes.push(faceBlob(palette.ink,[s*.16,.77,.39],[.057,.065,.032]));
-    eyes.push(faceBlob(palette.cream,[s*.15-.012,.79,.419],[.017,.018,.009]));
-    faceBlob(palette.cream,[s*.1,.62,.41],[.12,.085,.07]);
+    const ear=new THREE.Group();ear.position.set(s*.19,.91,.04);ear.rotation.z=-s*.23;if(s>0)ear.scale.set(.95,.83,.95);
+    const outline=new THREE.LatheGeometry([new THREE.Vector2(0,0),new THREE.Vector2(.08,.06),new THREE.Vector2(.13,.23),new THREE.Vector2(.115,.43),new THREE.Vector2(.07,.61),new THREE.Vector2(0,.74)],14);
+    const shell=new THREE.Mesh(outline,palette.fur);shell.scale.z=.65;shell.castShadow=true;ear.add(shell);
+    blob(ear,palette.pink,[0,.36,.073],[.077,.27,.023]);nibbitPose.add(ear);faceParts.push(ear);ears.push(ear);
+    faceBlob(mat('#806649'),[s*.17,.77,.383],[.117,.137,.042]);
+    eyes.push(faceBlob(palette.ink,[s*.17,.77,.407],[.093,.114,.041]));
+    eyes.push(faceBlob(new THREE.MeshBasicMaterial({color:'#fff2d6'}),[s*.17-.025,.812,.444],[.027,.033,.012]));
+    faceBlob(palette.cream,[s*.07,.625,.405],[.09,.065,.055]);
     const paw=new THREE.Group();nibbitPose.add(paw);paws.push(paw);
-    blob(paw,palette.fur,[s*.34,.24,.24],[.17,.12,.2]);
-    for(let j=0;j<3;j++)blob(paw,palette.cream,[s*.34+(j-1)*.055,.21,.405],[.026,.035,.065]);
+    blob(paw,mat('#65513c'),[s*.32,.24,.24],[.13,.11,.18]);
+    for(let j=0;j<3;j++)blob(paw,palette.cream,[s*.32+(j-1)*.045,.21,.395],[.021,.027,.05]);
     blob(nibbitPose,palette.fur,[s*.25,.12,-.16],[.18,.13,.22]);
   }
-  const nose=faceBlob(palette.pink,[0,.68,.48],[.065,.045,.035]);
+  const nose=faceBlob(palette.ink,[0,.665,.465],[.041,.028,.022]);
+  const mouthMaterial=mat('#493727');
+  faceBlob(mouthMaterial,[0,.615,.46],[.008,.025,.008]);
+  for(const side of [-1,1]){
+    const smile=faceBlob(mouthMaterial,[side*.019,.596,.45],[.025,.007,.007]);smile.rotation.z=side*.25;
+  }
   blob(nibbitPose,palette.cream,[0,.36,-.43],[.16,.16,.14]);
   const nibbitHead=new THREE.Group();nibbitHead.position.set(0,.72,.14);nibbitPose.add(nibbitHead);
   nibbitPose.updateMatrixWorld(true);faceParts.forEach(part=>nibbitHead.attach(part));
@@ -176,7 +248,7 @@ export function buildArt(scene, renderer, world, trees, rocks, nibbitCell) {
     nibbitPose.rotation.x=THREE.MathUtils.damp(nibbitPose.rotation.x,dig?.22:0,8,dt);
     nibbitHead.rotation.z=THREE.MathUtils.damp(nibbitHead.rotation.z,near?Math.sin(time*.8)*.12:Math.sin(time*.7)*.04,5,dt);
     nibbitHead.rotation.x=sniff?Math.sin(time*16)*.045:Math.sin(time*1.5)*.025;
-    nose.scale.y=.045*(sniff?1+Math.sin(time*20)*.2:1);
+    nose.scale.y=.028*(sniff?1+Math.sin(time*20)*.2:1);
     const blinkTime=time%4.7,blink=blinkTime<.16?Math.max(.08,Math.abs(blinkTime-.08)/.08):1;
     eyes.forEach((eye,i)=>eye.scale.y=eyeHeights[i]*blink);
     ears[0].rotation.z=-.23+Math.sin(time*1.7)*.06+(greeting>0?-.14*greeting:0);
