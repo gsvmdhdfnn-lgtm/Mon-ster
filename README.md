@@ -2,7 +2,22 @@
 
 A virtual world for collecting creatures.
 
-## Foundation 001 — movement playground
+## Visual Proof 001 — the little clearing
+
+Playable preview: https://gsvmdhdfnn-lgtm.github.io/Mon-ster/
+
+An art pass over Foundation 001, with its original 20×20 movement map and camera controls preserved:
+
+- Seeded, painted meadow ground with winding earth patches; no visible grid.
+- Grass and small meadow flowers drawn with instancing, clustered low-poly tree crowns, rooted trunks, and mossy rocks.
+- Warm directional lighting, soft shadows, atmospheric fog, and a shallow earth base.
+- A small explorer with a hat, teal coat, orange scarf, backpack, and walking animation.
+- A round rabbit-mole Nibbit with a cream belly and muzzle, long inset ears, bright eyes, digging paws/claws, and subtle idle motion.
+- A quiet destination ring and compact woodland-styled interface.
+
+The artwork lives in `art.js`; the navigation and camera remain in `index.html`. Decoration adds no blocked cells. The terrain surface stays level so the existing walking and picking logic remain reliable. No external art assets or additional production dependencies are required.
+
+### Foundation retained
 
 The first build deliberately tests only the world foundation:
 
@@ -27,6 +42,18 @@ This is a static prototype. Serve the repository over HTTP (rather than opening 
 
 - Click/tap ground: move
 - Drag: rotate/pitch camera
-- Mouse wheel or pinch: zoom
+- Mouse wheel: zoom
 - Click/tap Nibbit: approach
 - Reset camera: return to the default view
+
+## Validation
+
+Visual Proof 001 was checked in desktop Edge/Chromium with WebGL:
+
+- JavaScript syntax checks for both modules; no browser runtime errors.
+- Paths to all 393 walkable cells, rejecting all seven occupied cells and preventing diagonal corner cutting.
+- Actual pointer clicks for ground movement, blocked destinations, and Nibbit approach, including clicking Nibbit again when already beside it.
+- More than 360° of camera drag, pitch and zoom limits, reset, and viewport resize.
+- Visual inspection at 1440×1000, including the default view and Nibbit approach.
+
+The default view measured approximately 15,338 rendered triangles and 90 draw calls (renderer counters, not a frame-rate guarantee). Grass and flowers use two instanced draw calls. Pixel density is capped at 2 and the shadow map at 2048². Mobile Safari compatibility has not been verified; this proof targets desktop playability.
